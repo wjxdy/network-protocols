@@ -364,7 +364,7 @@ body
 
 ```rust
 // Response 表示一个 HTTP 响应。
-struct Response {
+struct Response {	
     // HTTP 状态码，比如 200、404。
     status_code: u16,
 
