@@ -12,6 +12,18 @@ http://127.0.0.1:8080/
 
 然后看到服务端返回的内容。
 
+## 如何阅读代码注释
+
+这份文档里的 Rust 代码会尽量写注释。
+
+注释长这样：
+
+```rust
+// 这是注释，不会被 Rust 执行，只是写给人看的说明
+```
+
+前面的步骤会解释关键代码。到最后的完整版本时，我会把代码写成接近逐行注释的形式。你刚开始可以照着带注释版本敲，等熟悉之后，再自己尝试删掉注释，只保留代码。
+
 ## 你会学到什么
 
 你会亲手完成：
@@ -81,11 +93,18 @@ Hello, world!
 打开 `src/main.rs`，先写：
 
 ```rust
+// 从 Rust 标准库里导入 TcpListener。
+// TcpListener 的作用是监听一个 TCP 地址和端口，等待客户端连接。
 use std::net::TcpListener;
 
+// main 是 Rust 程序的入口函数，程序会从这里开始执行。
 fn main() {
+    // 在本机 127.0.0.1 的 8080 端口上启动监听。
+    // bind 可能失败，比如端口被占用，所以它返回 Result。
+    // unwrap 表示：成功就取出 TcpListener，失败就让程序直接崩溃并打印错误。
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
+    // 在终端打印提示，告诉我们服务端已经启动。
     println!("Server listening on http://127.0.0.1:8080");
 }
 ```
@@ -111,15 +130,26 @@ Server listening on http://127.0.0.1:8080
 把 `main.rs` 改成：
 
 ```rust
+// 导入 TCP 监听器。
 use std::net::TcpListener;
 
+// 程序入口。
 fn main() {
+    // 监听本机 8080 端口。
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
+    // 打印服务端地址。
     println!("Server listening on http://127.0.0.1:8080");
 
+    // incoming 会不断等待新的 TCP 连接。
+    // 每来一个客户端连接，循环体就执行一次。
     for stream in listener.incoming() {
+        // stream 是 Result<TcpStream, Error>。
+        // unwrap 后得到真正的 TcpStream。
         let stream = stream.unwrap();
+
+        // 打印客户端地址。
+        // peer_addr 也可能失败，所以这里打印出来的是一个 Result。
         println!("New connection: {:?}", stream.peer_addr());
     }
 }
@@ -154,23 +184,42 @@ New connection: Ok(127.0.0.1:xxxxx)
 把代码改成：
 
 ```rust
+// 导入 Read trait。
+// 有了它，TcpStream 才能调用 read 方法读取字节。
 use std::io::Read;
+
+// 导入 TCP 监听器。
 use std::net::TcpListener;
 
+// 程序入口。
 fn main() {
+    // 监听本机 8080 端口。
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
+    // 打印启动信息。
     println!("Server listening on http://127.0.0.1:8080");
 
+    // 不断等待客户端连接。
     for stream in listener.incoming() {
+        // 取出 TcpStream。
+        // 这里必须写 mut，因为下面 read 会修改 stream 的内部读取状态。
         let mut stream = stream.unwrap();
 
+        // 创建 1024 字节的缓冲区，用来暂时存放客户端发来的数据。
         let mut buffer = [0; 1024];
+
+        // 从 TCP 连接读取数据到 buffer 里。
+        // 返回值 bytes_read 表示这次实际读到了多少字节。
         let bytes_read = stream.read(&mut buffer).unwrap();
 
+        // 打印读取到的字节数。
         println!("Read {} bytes", bytes_read);
 
+        // buffer 里可能不是 1024 字节都有效。
+        // 所以只取前 bytes_read 个字节，并把它们按 UTF-8 文本显示出来。
         let request_text = String::from_utf8_lossy(&buffer[..bytes_read]);
+
+        // 打印原始 HTTP 请求。
         println!("Request:\n{}", request_text);
     }
 }
@@ -246,30 +295,50 @@ Hello, world!
 把代码改成：
 
 ```rust
+// 同时导入 Read 和 Write。
+// Read 用来读请求，Write 用来写响应。
 use std::io::{Read, Write};
+
+// 导入 TCP 监听器。
 use std::net::TcpListener;
 
+// 程序入口。
 fn main() {
+    // 监听本机 8080 端口。
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
+    // 打印启动信息。
     println!("Server listening on http://127.0.0.1:8080");
 
+    // 不断接受客户端连接。
     for stream in listener.incoming() {
+        // 取出 TcpStream，并声明为可变，因为要读写它。
         let mut stream = stream.unwrap();
 
+        // 创建读取缓冲区。
         let mut buffer = [0; 1024];
+
+        // 读取客户端请求。
         let bytes_read = stream.read(&mut buffer).unwrap();
 
+        // 把读到的字节转换成方便查看的文本。
         let request_text = String::from_utf8_lossy(&buffer[..bytes_read]);
+
+        // 打印请求内容。
         println!("Request:\n{}", request_text);
 
+        // 定义响应 body，也就是真正要返回给客户端的内容。
         let body = "Hello, world!";
+
+        // 构造完整 HTTP 响应。
+        // 注意 headers 和 body 之间有一个空行：\r\n\r\n。
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\n\r\n{}",
             body.len(),
             body
         );
 
+        // 把响应字符串转换成字节，然后写回 TCP 连接。
         stream.write_all(response.as_bytes()).unwrap();
     }
 }
@@ -358,21 +427,40 @@ method path version
 在 `main.rs` 顶部加：
 
 ```rust
+// 自动实现 Debug，这样 Request 可以用 {:?} 打印出来。
 #[derive(Debug)]
+// 定义一个结构体，用来保存 HTTP 请求的第一行信息。
 struct Request {
+    // HTTP 方法，比如 GET、POST。
     method: String,
+
+    // 请求路径，比如 /、/hello。
     path: String,
+
+    // HTTP 版本，比如 HTTP/1.1。
     version: String,
 }
 
+// 解析 HTTP 请求文本，成功时返回 Some(Request)，失败时返回 None。
 fn parse_request(request_text: &str) -> Option<Request> {
+    // 取请求文本的第一行。
+    // 如果没有第一行，? 会让整个函数直接返回 None。
     let request_line = request_text.lines().next()?;
+
+    // 按空白字符切分第一行。
+    // "GET /hello HTTP/1.1" 会被切成三段。
     let mut parts = request_line.split_whitespace();
 
+    // 取第一段作为 method，并转换成 String。
     let method = parts.next()?.to_string();
+
+    // 取第二段作为 path。
     let path = parts.next()?.to_string();
+
+    // 取第三段作为 version。
     let version = parts.next()?.to_string();
 
+    // 把解析出来的字段放进 Request 结构体里。
     Some(Request {
         method,
         path,
@@ -400,24 +488,44 @@ println!("Parsed request: {:?}", request);
 完整代码暂时会变成：
 
 ```rust
+// 同时导入 Read 和 Write。
 use std::io::{Read, Write};
+
+// 导入 TCP 监听器。
 use std::net::TcpListener;
 
+// 让 Request 可以用 {:?} 打印，方便调试。
 #[derive(Debug)]
+// 保存 HTTP 请求第一行解析后的结果。
 struct Request {
+    // 请求方法，例如 GET。
     method: String,
+
+    // 请求路径，例如 /hello。
     path: String,
+
+    // HTTP 版本，例如 HTTP/1.1。
     version: String,
 }
 
+// 把原始 HTTP 请求文本解析成 Request。
 fn parse_request(request_text: &str) -> Option<Request> {
+    // 获取第一行，比如 "GET /hello HTTP/1.1"。
     let request_line = request_text.lines().next()?;
+
+    // 按空白分割第一行。
     let mut parts = request_line.split_whitespace();
 
+    // 第一段是 HTTP 方法。
     let method = parts.next()?.to_string();
+
+    // 第二段是请求路径。
     let path = parts.next()?.to_string();
+
+    // 第三段是 HTTP 版本。
     let version = parts.next()?.to_string();
 
+    // 组装成 Request 并返回。
     Some(Request {
         method,
         path,
@@ -425,30 +533,48 @@ fn parse_request(request_text: &str) -> Option<Request> {
     })
 }
 
+// 程序入口。
 fn main() {
+    // 监听本机 8080 端口。
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
+    // 打印启动信息。
     println!("Server listening on http://127.0.0.1:8080");
 
+    // 循环接受客户端连接。
     for stream in listener.incoming() {
+        // 取出连接，并声明为可变。
         let mut stream = stream.unwrap();
 
+        // 准备 1024 字节缓冲区。
         let mut buffer = [0; 1024];
+
+        // 读取客户端发来的 HTTP 请求。
         let bytes_read = stream.read(&mut buffer).unwrap();
 
+        // 把实际读到的字节转成文本。
         let request_text = String::from_utf8_lossy(&buffer[..bytes_read]);
+
+        // 打印原始请求。
         println!("Request:\n{}", request_text);
 
+        // 解析请求行。
         let request = parse_request(&request_text).unwrap();
+
+        // 打印解析后的结构体。
         println!("Parsed request: {:?}", request);
 
+        // 准备响应 body。
         let body = "Hello, world!";
+
+        // 拼出 HTTP 响应。
         let response = format!(
             "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/plain\r\n\r\n{}",
             body.len(),
             body
         );
 
+        // 写回响应。
         stream.write_all(response.as_bytes()).unwrap();
     }
 }
@@ -461,10 +587,18 @@ fn main() {
 把响应部分改成：
 
 ```rust
+// 根据请求路径决定返回什么 body。
 let body = match request.path.as_str() {
+    // 如果访问 /，返回首页文本。
     "/" => "Home page",
+
+    // 如果访问 /hello，返回 hello 文本。
     "/hello" => "Hello from Rust HTTP server",
+
+    // 如果访问 /about，返回 about 文本。
     "/about" => "This server is written from zero",
+
+    // _ 表示其他所有路径。
     _ => "Not Found",
 };
 ```
@@ -474,13 +608,18 @@ let body = match request.path.as_str() {
 继续改：
 
 ```rust
+// 根据请求路径，同时决定状态行和响应 body。
 let (status_line, body) = match request.path.as_str() {
+    // 已知路径返回 200 OK。
     "/" => ("HTTP/1.1 200 OK", "Home page"),
     "/hello" => ("HTTP/1.1 200 OK", "Hello from Rust HTTP server"),
     "/about" => ("HTTP/1.1 200 OK", "This server is written from zero"),
+
+    // 未知路径返回 404 Not Found。
     _ => ("HTTP/1.1 404 Not Found", "Not Found"),
 };
 
+// 把状态行、headers、body 拼成完整 HTTP 响应。
 let response = format!(
     "{}\r\nContent-Length: {}\r\nContent-Type: text/plain\r\n\r\n{}",
     status_line,
@@ -507,17 +646,23 @@ curl -v http://127.0.0.1:8080/missing
 把 `/` 的 body 改成：
 
 ```rust
+// 根据请求路径决定 status、Content-Type 和 body。
 let (status_line, content_type, body) = match request.path.as_str() {
+    // 首页返回 HTML。
     "/" => (
         "HTTP/1.1 200 OK",
         "text/html; charset=utf-8",
         "<h1>Home</h1><p>Hello from a tiny Rust HTTP server.</p>",
     ),
+
+    // /hello 返回纯文本。
     "/hello" => (
         "HTTP/1.1 200 OK",
         "text/plain; charset=utf-8",
         "Hello from Rust HTTP server",
     ),
+
+    // 其他路径返回 404。
     _ => (
         "HTTP/1.1 404 Not Found",
         "text/plain; charset=utf-8",
@@ -525,6 +670,7 @@ let (status_line, content_type, body) = match request.path.as_str() {
     ),
 };
 
+// 构造 HTTP 响应。
 let response = format!(
     "{}\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n{}",
     status_line,
@@ -545,24 +691,56 @@ let response = format!(
 我们把单个连接的处理拆出去：
 
 ```rust
+// 从标准库导入 Read 和 Write。
+// Read 让 TcpStream 可以读取客户端发来的字节。
+// Write 让 TcpStream 可以把响应字节写回客户端。
 use std::io::{Read, Write};
+
+// 从标准库导入两个 TCP 类型。
+// TcpListener 用来监听端口。
+// TcpStream 表示一个已经建立好的 TCP 连接。
 use std::net::{TcpListener, TcpStream};
 
+// derive(Debug) 的意思是：让这个结构体可以用 {:?} 打印出来。
+// 这对初学阶段调试非常有用。
 #[derive(Debug)]
+// 定义一个 Request 结构体，用来保存 HTTP 请求第一行的信息。
 struct Request {
+    // method 表示 HTTP 方法，比如 GET、POST。
+    // 这里先用 String 保存，简单直接。
     method: String,
+
+    // path 表示请求路径，比如 /、/hello、/about。
     path: String,
+
+    // version 表示 HTTP 版本，比如 HTTP/1.1。
     version: String,
 }
 
+// 定义一个函数，把原始 HTTP 请求文本解析成 Request。
+// 参数 request_text: &str 表示：借用一段字符串，不拿走它的所有权。
+// 返回 Option<Request> 表示：可能解析成功，也可能解析失败。
 fn parse_request(request_text: &str) -> Option<Request> {
+    // request_text.lines() 会按行遍历请求文本。
+    // next() 取第一行，也就是 HTTP request line。
+    // 如果没有第一行，? 会让函数直接返回 None。
     let request_line = request_text.lines().next()?;
+
+    // split_whitespace 会按空白字符切分字符串。
+    // 例如 "GET /hello HTTP/1.1" 会切成 GET、/hello、HTTP/1.1。
     let mut parts = request_line.split_whitespace();
 
+    // 取第一段作为 method。
+    // to_string() 把 &str 转成拥有所有权的 String。
     let method = parts.next()?.to_string();
+
+    // 取第二段作为 path。
     let path = parts.next()?.to_string();
+
+    // 取第三段作为 version。
     let version = parts.next()?.to_string();
 
+    // 把解析结果放入 Request 结构体，并用 Some 包起来表示成功。
     Some(Request {
         method,
         path,
@@ -570,27 +748,54 @@ fn parse_request(request_text: &str) -> Option<Request> {
     })
 }
 
+// 处理一个客户端连接。
+// 参数 mut stream: TcpStream 表示接收一个 TCP 连接，并且这个连接是可变的。
+// 它需要可变，是因为 read/write 会改变连接内部的读取和写入状态。
 fn handle_connection(mut stream: TcpStream) {
+    // 创建一个 1024 字节的数组，作为临时读取缓冲区。
+    // [0; 1024] 表示数组长度是 1024，每个位置的初始值都是 0。
     let mut buffer = [0; 1024];
+
+    // 从 TCP 连接读取数据到 buffer。
+    // bytes_read 表示实际读到了多少字节。
+    // unwrap 表示：如果读取失败，程序直接报错退出。
     let bytes_read = stream.read(&mut buffer).unwrap();
 
+    // buffer 可能没有被填满。
+    // &buffer[..bytes_read] 表示只取实际读到的那部分字节。
+    // String::from_utf8_lossy 会把字节转换成可打印的文本。
     let request_text = String::from_utf8_lossy(&buffer[..bytes_read]);
+
+    // 打印原始 HTTP 请求，方便你观察浏览器或 curl 到底发了什么。
     println!("Request:\n{}", request_text);
 
+    // 调用 parse_request 解析请求第一行。
+    // unwrap 表示这里先假设请求格式一定正确。
     let request = parse_request(&request_text).unwrap();
+
+    // 打印解析后的 Request。
     println!("Parsed request: {:?}", request);
 
+    // 根据请求路径决定返回什么内容。
+    // match 很像其他语言里的 switch。
+    // 这里同时返回三个值：状态行、内容类型、响应体。
     let (status_line, content_type, body) = match request.path.as_str() {
+        // 如果访问根路径 /，返回 HTML。
         "/" => (
             "HTTP/1.1 200 OK",
             "text/html; charset=utf-8",
             "<h1>Home</h1><p>Hello from a tiny Rust HTTP server.</p>",
         ),
+
+        // 如果访问 /hello，返回纯文本。
         "/hello" => (
             "HTTP/1.1 200 OK",
             "text/plain; charset=utf-8",
             "Hello from Rust HTTP server",
         ),
+
+        // _ 表示其他所有路径。
+        // 对未知路径返回 404。
         _ => (
             "HTTP/1.1 404 Not Found",
             "text/plain; charset=utf-8",
@@ -598,24 +803,51 @@ fn handle_connection(mut stream: TcpStream) {
         ),
     };
 
+    // 使用 format! 拼出完整 HTTP 响应字符串。
+    // HTTP 响应由三部分组成：
+    // 1. 状态行
+    // 2. headers
+    // 3. 空行后面的 body
+    //
+    // \r\n 是 HTTP 常用换行。
+    // \r\n\r\n 表示 headers 结束，后面开始是 body。
     let response = format!(
         "{}\r\nContent-Length: {}\r\nContent-Type: {}\r\n\r\n{}",
         status_line,
+
+        // Content-Length 要写 body 的字节数。
+        // 用 as_bytes().len() 比 body.len() 更明确。
         body.as_bytes().len(),
+
+        // Content-Type 告诉浏览器如何理解 body。
         content_type,
+
+        // body 是真正返回给客户端看的内容。
         body
     );
 
+    // 把响应字符串转换成字节，写回 TCP 连接。
+    // HTTP 本质上就是通过 TCP 发送一串符合格式的字节。
     stream.write_all(response.as_bytes()).unwrap();
 }
 
+// main 是程序入口。
 fn main() {
+    // 在本机 127.0.0.1 的 8080 端口启动 TCP 监听。
+    // 127.0.0.1 表示只允许本机访问。
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
 
+    // 打印服务启动信息。
     println!("Server listening on http://127.0.0.1:8080");
 
+    // listener.incoming() 会不断等待新的客户端连接。
+    // 每有一个连接进来，for 循环就执行一次。
     for stream in listener.incoming() {
+        // stream 是 Result<TcpStream, Error>。
+        // unwrap 后得到真正的 TcpStream。
         let stream = stream.unwrap();
+
+        // 把这个连接交给 handle_connection 处理。
         handle_connection(stream);
     }
 }
@@ -670,4 +902,3 @@ fn main() {
 - 添加最小测试
 
 再往后，才进入 SSE。
-
