@@ -28,6 +28,7 @@ Rust 网络编程基础
 1. [docs/00-roadmap.md](docs/00-roadmap.md)
 2. [docs/01-rust-basics-for-networking.md](docs/01-rust-basics-for-networking.md)
 3. [docs/02-build-http-server-from-zero.md](docs/02-build-http-server-from-zero.md)
+4. [docs/03-structure-http-server.md](docs/03-structure-http-server.md)
 
 ## 项目原则
 
@@ -47,4 +48,3 @@ Rust 网络编程基础
 也就是说：底层 TCP 连接先交给操作系统，协议格式、解析、状态机、请求响应都由我们自己写。
 
 等 HTTP、SSE、WebSocket 跑通之后，再单独进入 TCP 阶段。
-

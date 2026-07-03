@@ -589,7 +589,7 @@ fn main() {
 ```rust
 // 根据请求路径决定返回什么 body。
 let body = match request.path.as_str() {
-    // 如果访问 /，返回首页文本。
+    // 如果访问 /，返回首页文本
     "/" => "Home page",
 
     // 如果访问 /hello，返回 hello 文本。
