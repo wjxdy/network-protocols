@@ -30,6 +30,7 @@ Rust 网络编程基础
 3. [docs/02-build-http-server-from-zero.md](docs/02-build-http-server-from-zero.md)
 4. [docs/03-structure-http-server.md](docs/03-structure-http-server.md)
 5. [docs/04-http-request-body-and-post.md](docs/04-http-request-body-and-post.md)
+6. [docs/05-split-http-modules-and-tests.md](docs/05-split-http-modules-and-tests.md)
 
 ## 项目原则
 
