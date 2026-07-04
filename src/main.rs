@@ -10,9 +10,15 @@ struct Request {
     version: String,
 
     headers: Vec<Header>,
+
+    body: Vec<u8>,
 }
 
 impl Request {
+    fn body_text(&self) -> String {
+        String::from_utf8_lossy(&self.body).to_string()
+    }
+
     fn header(&self, name: &str) -> Option<&str> {
         for header in &self.headers {
             if header.name.eq_ignore_ascii_case(name) {
@@ -21,6 +27,68 @@ impl Request {
         }
 
         None
+    }
+}
+
+fn find_header_end(buffer: &[u8]) -> Option<usize> {
+    let marker = b"\r\n\r\n";
+
+    buffer
+        .windows(marker.len())
+        .position(|window| window == marker)
+}
+
+fn parse_content_length_from_head(head_text: &str) -> Option<usize> {
+    for line in head_text.lines() {
+        let (name, value) = line.split_once(":")?;
+
+        if name.trim().eq_ignore_ascii_case("Content-Length") {
+            return value.trim().parse::<usize>().ok();
+        }
+    }
+
+    None
+}
+
+fn read_http_request(stream: &mut TcpStream) -> Option<Vec<u8>> {
+    let mut buffer = Vec::new();
+
+    let mut temp = [0; 1024];
+
+    let mut expected_total: Option<usize> = None;
+
+    loop {
+        let bytes_read = stream.read(&mut temp).unwrap();
+
+        if bytes_read == 0 {
+            break;
+        }
+
+        buffer.extend_from_slice(&temp[..bytes_read]);
+
+        if expected_total.is_none() {
+            if let Some(header_end) = find_header_end(&buffer) {
+                let head_text = String::from_utf8_lossy(&buffer[..bytes_read]);
+
+                let content_length = parse_content_length_from_head(&head_text).unwrap_or(0);
+
+                let body_start = header_end + 4;
+
+                expected_total = Some(body_start + content_length);
+            }
+        }
+
+        if let Some(total) = expected_total {
+            if buffer.len() >= total {
+                break;
+            }
+        }
+    }
+
+    if buffer.is_empty() {
+        None
+    } else {
+        Some(buffer)
     }
 }
 
@@ -78,12 +146,19 @@ impl Response {
 }
 
 fn route(request: &Request) -> Response {
+    println!(
+        "method={}, path={}, version={}",
+        request.method, request.path, request.version
+    );
+
     if let Some(host) = request.header("Host") {
         println!("Host header: {}", host);
     }
 
-    match request.path.as_str() {
-        "/" => {
+    println!("body length: {}", request.body.len());
+
+    match (request.method.as_str(), request.path.as_str()) {
+        ("GET", "/") => {
             let body = b"<h1>Home</h1><p>Structured HTTP server.</p>".to_vec();
 
             let mut response = Response::new(200, "OK", body);
@@ -93,13 +168,20 @@ fn route(request: &Request) -> Response {
             response
         }
 
-        "/hello" => {
+        ("GET", "/hello") => {
             let body = b"Hello from structed Rust HTTP server".to_vec();
 
             let mut response = Response::new(200, "OK", body);
 
             response.set_header("Content-type", "text/plain; charset=utf-8");
 
+            response
+        }
+        ("POST", "/submit") => {
+            let submitted = request.body_text();
+            let html = format!("<h1>Submitted</h1><pre>{}</pre>", submitted);
+            let mut response = Response::new(200, "OK", html.into_bytes());
+            response.set_header("Content-Type", "text/html; charset=utf-8");
             response
         }
 
@@ -132,8 +214,16 @@ fn parse_header_line(line: &str) -> Option<Header> {
     Some(Header { name, value })
 }
 
-fn parse_request(request_text: &str) -> Option<Request> {
-    let mut lines = request_text.lines();
+fn parse_request(raw: &[u8]) -> Option<Request> {
+    let header_end = find_header_end(raw)?;
+
+    let body_start = header_end + 4;
+
+    let head_text = String::from_utf8_lossy(&raw[..header_end]);
+
+    let body = raw[body_start..].to_vec();
+
+    let mut lines = head_text.lines();
 
     let request_line = lines.next()?;
 
@@ -162,23 +252,18 @@ fn parse_request(request_text: &str) -> Option<Request> {
         path,
         version,
         headers,
+        body,
     })
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let mut buffer = [0; 4096];
-
-    let bytes_read = stream.read(&mut buffer).unwrap();
-
-    if bytes_read == 0 {
+    let Some(raw_request) = read_http_request(&mut stream) else {
         return;
-    }
+    };
 
-    let request_text = String::from_utf8_lossy(&buffer[..bytes_read]);
+    println!("Raw request:\n{}", String::from_utf8_lossy(&raw_request));
 
-    println!("Request: \n{}", request_text);
-
-    let request = parse_request(&request_text).unwrap();
+    let request = parse_request(&raw_request).unwrap();
 
     let response = route(&request);
 

@@ -29,6 +29,7 @@ Rust 网络编程基础
 2. [docs/01-rust-basics-for-networking.md](docs/01-rust-basics-for-networking.md)
 3. [docs/02-build-http-server-from-zero.md](docs/02-build-http-server-from-zero.md)
 4. [docs/03-structure-http-server.md](docs/03-structure-http-server.md)
+5. [docs/04-http-request-body-and-post.md](docs/04-http-request-body-and-post.md)
 
 ## 项目原则
 
