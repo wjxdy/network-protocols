@@ -1,4 +1,4 @@
-use crate::Header;
+use crate::http::header::Header;
 
 #[derive(Debug)]
 pub struct Request {

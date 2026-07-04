@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
-struct Header {
-    name: String,
-    value: String,
+pub struct Header {
+    pub name: String,
+    pub value: String,
 }
 
 impl Header {

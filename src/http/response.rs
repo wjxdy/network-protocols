@@ -1,4 +1,4 @@
-use crate::Header;
+use crate::http::header::Header;
 
 pub struct Response {
     pub status_code: u16,

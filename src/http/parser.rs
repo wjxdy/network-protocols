@@ -1,7 +1,7 @@
-use super::Request;
-use crate::Header;
+use crate::http::Request;
+use crate::http::header::Header;
 
-fn find_header_end(buffer: &[u8]) -> Option<usize> {
+pub fn find_header_end(buffer: &[u8]) -> Option<usize> {
     let marker = b"\r\n\r\n";
 
     buffer
@@ -9,7 +9,7 @@ fn find_header_end(buffer: &[u8]) -> Option<usize> {
         .position(|window| window == marker)
 }
 
-fn parse_content_length_from_head(head_text: &str) -> Option<usize> {
+ pub fn parse_content_length_from_head(head_text: &str) -> Option<usize> {
     for line in head_text.lines() {
         let Some((name, value)) = line.split_once(":") else {
             continue;
@@ -23,7 +23,7 @@ fn parse_content_length_from_head(head_text: &str) -> Option<usize> {
     None
 }
 
-fn parse_header_line(line: &str) -> Option<Header> {
+pub fn parse_header_line(line: &str) -> Option<Header> {
     let (name, value) = line.split_once(":")?;
 
     let name = name.trim().to_string();
@@ -36,7 +36,7 @@ fn parse_header_line(line: &str) -> Option<Header> {
     Some(Header { name, value })
 }
 
-fn parse_request(raw: &[u8]) -> Option<Request> {
+pub fn parse_request(raw: &[u8]) -> Option<Request> {
     let header_end = find_header_end(raw)?;
 
     let body_start = header_end + 4;
