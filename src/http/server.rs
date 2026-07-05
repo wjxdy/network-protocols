@@ -106,6 +106,52 @@ fn route(request: &Request) -> Response {
     }
 }
 
+fn write_sse_headers(stream: &mut TcpStream) -> std::io::Result<()> {
+    let headers = concat!(
+        "HTTP/1.1 200 OK\r\n",
+        "Content-Type: text/event-stream\r\n",
+        "Cache-Control: no-cache\r\n",
+        "\r\n"
+    );
+
+    stream.write_all(headers.as_bytes())
+}
+
+fn sse_data(message: &str) -> String {
+    format!("data: {}\n\n", message)
+}
+
+use std::thread::sleep;
+use std::time::Duration;
+
+fn handle_sse(mut stream: TcpStream) {
+    if write_sse_headers(&mut stream).is_err() {
+        return;
+    }
+
+    let mut count = 1;
+
+    loop {
+        let message = format!("tick {}", count);
+
+        let event = sse_data(&message);
+
+        if stream.write_all(event.as_bytes()).is_err() {
+            println!("SSE client disconnected");
+            break;
+        }
+
+        if stream.flush().is_err() {
+            println!("SSE flush failed");
+            break;
+        }
+
+        count += 1;
+
+        sleep(Duration::from_secs(1));
+    }
+}
+
 fn handle_connection(mut stream: TcpStream) {
     let Some(raw_request) = read_http_request(&mut stream) else {
         return;
@@ -114,6 +160,11 @@ fn handle_connection(mut stream: TcpStream) {
     println!("Raw request:\n{}", String::from_utf8_lossy(&raw_request));
 
     let request = parse_request(&raw_request).unwrap();
+
+    if request.method == "GET" && request.path == "/events" {
+        handle_sse(stream);
+        return;
+    }
 
     let response = route(&request);
 
@@ -129,6 +180,9 @@ pub fn serve(addr: &str) {
 
     for stream in listener.incoming() {
         let stream = stream.unwrap();
-        handle_connection(stream);
+
+        std::thread::spawn(move || {
+            handle_connection(stream);
+        });
     }
 }

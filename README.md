@@ -31,6 +31,8 @@ Rust 网络编程基础
 4. [docs/03-structure-http-server.md](docs/03-structure-http-server.md)
 5. [docs/04-http-request-body-and-post.md](docs/04-http-request-body-and-post.md)
 6. [docs/05-split-http-modules-and-tests.md](docs/05-split-http-modules-and-tests.md)
+7. [docs/06-sse-server-sent-events.md](docs/06-sse-server-sent-events.md)
+8. [docs/07-websocket-handshake-and-frames.md](docs/07-websocket-handshake-and-frames.md)
 
 ## 项目原则
 
