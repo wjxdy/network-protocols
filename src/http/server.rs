@@ -9,6 +9,8 @@ use crate::http::Response;
 use crate::http::parser::parse_request;
 use crate::http::parser::{find_header_end, parse_content_length_from_head};
 
+use crate::ws::{is_websocket_upgrade, websocket_accept_key};
+
 fn read_http_request(stream: &mut TcpStream) -> Option<Vec<u8>> {
     let mut buffer = Vec::new();
 
@@ -150,6 +152,27 @@ fn handle_sse(mut stream: TcpStream) {
 
         sleep(Duration::from_secs(1));
     }
+}
+
+fn handle_webscoket_handshake(stream: &mut TcpStream, request: &Request) -> std::io::Result<()> {
+    let key = request
+        .header("Sec-WebSocket-Key")
+        .expect("missing Sec-WebSocket-key");
+
+    let accept = websocket_accept_key(key);
+
+    let response = format!(
+        concat!(
+            "HTTP/1.1 101 Switching Protocols\r\n",
+            "Upgrade: websocket\r\n",
+            "Connection: Upgrade\r\n",
+            "Sec-WebSocket-Accept: {}\r\n",
+            "\r\n"
+        ),
+        accept
+    );
+
+    stream.write_all(response.as_bytes())
 }
 
 fn handle_connection(mut stream: TcpStream) {
