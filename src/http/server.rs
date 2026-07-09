@@ -222,6 +222,17 @@ fn handle_connection(mut stream: TcpStream) {
 
     let request = parse_request(&raw_request).unwrap();
 
+    if request.path == "/ws" && is_websocket_upgrade(&request) {
+        if handle_websocket_handshake(&mut stream, &request).is_err() {
+            return;
+        }
+
+        websocket_echo_loop(stream);
+        return;
+    }
+
+
+
     if request.method == "GET" && request.path == "/events" {
         handle_sse(stream);
         return;

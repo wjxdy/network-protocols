@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WebSocket Test</title>
+  </head>
+  <body>
+    <input id="message" value="hello websocket" />
+    <button id="send">Send</button>
+    <pre id="log"></pre>
+
+    <script>
+      const log = document.querySelector("#log");
+      const input = document.querySelector("#message");
+      const button = document.querySelector("#send");
+
+      const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+
+      ws.onopen = () => {
+        log.textContent += "connected\n";
+      };
+
+      ws.onmessage = (event) => {
+        log.textContent += "server: " + event.data + "\n";
+      };
+
+      ws.onclose = () => {
+        log.textContent += "closed\n";
+      };
+
+      ws.onerror = () => {
+        log.textContent += "error\n";
+      };
+
+      button.onclick = () => {
+        ws.send(input.value);
+        log.textContent += "client: " + input.value + "\n";
+      };
+    </script>
+  </body>
+</html>
