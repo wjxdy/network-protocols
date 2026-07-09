@@ -2,10 +2,10 @@ use crate::http::Request;
 
 use super::crypto::{base64_encode, sha1};
 
-const ws_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
+const WS_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 pub fn websocket_accept_key(key: &str) -> String {
-    let combined = format!("{}{}", key.trim(), ws_GUID);
+    let combined = format!("{}{}", key.trim(), WS_GUID);
 
     let digest = sha1(combined.as_bytes());
 

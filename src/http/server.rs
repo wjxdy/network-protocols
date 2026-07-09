@@ -8,6 +8,7 @@ use crate::http::Response;
 
 use crate::http::parser::parse_request;
 use crate::http::parser::{find_header_end, parse_content_length_from_head};
+use crate::ws::{WsFrame, read_ws_frame, write_ws_text};
 
 use crate::ws::{is_websocket_upgrade, websocket_accept_key};
 
@@ -154,7 +155,7 @@ fn handle_sse(mut stream: TcpStream) {
     }
 }
 
-fn handle_webscoket_handshake(stream: &mut TcpStream, request: &Request) -> std::io::Result<()> {
+fn handle_websocket_handshake(stream: &mut TcpStream, request: &Request) -> std::io::Result<()> {
     let key = request
         .header("Sec-WebSocket-Key")
         .expect("missing Sec-WebSocket-key");
@@ -173,6 +174,43 @@ fn handle_webscoket_handshake(stream: &mut TcpStream, request: &Request) -> std:
     );
 
     stream.write_all(response.as_bytes())
+}
+
+fn websocket_echo_loop(mut stream: TcpStream) {
+    loop {
+        let frame = match read_ws_frame(&mut stream) {
+            Ok(frame) => frame,
+            Err(error) => {
+                println!("WebSocket read error: {}", error);
+                break;
+            }
+        };
+
+        match frame {
+            WsFrame::Text(text) => {
+                println!("WebSocket text: {}", text);
+
+                if write_ws_text(&mut stream, &text).is_err() {
+                    println!("WebSocket write failed");
+                    break;
+                }
+            }
+            WsFrame::Close => {
+                println!("WebScoket closed");
+                break;
+            }
+            WsFrame::Ping(payload) => {
+                println!("WebSocket ping: {} bytes", payload.len());
+            }
+            WsFrame::Pong(payload) => {
+                println!("WebSocket ping: {} bytes", payload.len());
+            }
+            WsFrame::Other => {
+                println!("Unsupported WebSocket frame");
+                break;
+            }
+        }
+    }
 }
 
 fn handle_connection(mut stream: TcpStream) {

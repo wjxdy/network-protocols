@@ -689,7 +689,7 @@ pub fn read_ws_frame(stream: &mut TcpStream) -> std::io::Result<WsFrame> {
     // 第一个字节。
     let byte0 = header[0];
 
-    // 第二个字节。
+    // 第二个字节。jj
     let byte1 = header[1];
 
     // FIN 表示这是不是消息的最后一帧。
@@ -720,7 +720,7 @@ pub fn read_ws_frame(stream: &mut TcpStream) -> std::io::Result<WsFrame> {
     if payload_len == 127 {
         let mut extended = [0u8; 8];
         stream.read_exact(&mut extended)?;
-        payload_len = u64::from_be_bytes(extended);
+        payload_len = u64::from_be_bytes(extended); 
     }
 
     // 浏览器发给服务端的 frame 必须 masked。
