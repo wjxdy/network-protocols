@@ -33,6 +33,7 @@ Rust 网络编程基础
 6. [docs/05-split-http-modules-and-tests.md](docs/05-split-http-modules-and-tests.md)
 7. [docs/06-sse-server-sent-events.md](docs/06-sse-server-sent-events.md)
 8. [docs/07-websocket-handshake-and-frames.md](docs/07-websocket-handshake-and-frames.md)
+9. [docs/08-mini-tcp-state-machine.md](docs/08-mini-tcp-state-machine.md)
 
 ## 项目原则
 
